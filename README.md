@@ -68,7 +68,7 @@ specs/         SRS、SDS、LLD、契約、任務與追蹤
 instance/      本機活動資料庫（Git 忽略）
 ```
 
-## 5. 助教與新筆電的首次準備
+## 5. 首次準備
 
 本指南使用 Windows PowerShell。先安裝 [Python 3.13](https://www.python.org/downloads/)、[Git](https://git-scm.com/downloads) 與 [Google Cloud CLI](https://cloud.google.com/sdk/docs/install)，安裝完成後重新開啟 PowerShell。展示使用 Chrome 與 Edge。請下載原始碼後在專案資料夾開啟終端機，家用筆電不必建立 D 槽或沿用作者的路徑。
 
