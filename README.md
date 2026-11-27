@@ -73,7 +73,7 @@ instance/      本機活動資料庫（Git 忽略）
 需要 Git、Python 3.13；本節命令使用 Windows PowerShell。可直接從公開儲存庫下載原始碼。
 
 ```powershell
-git clone https://github.com/Kki44/guided-notes-buzzer-public.git
+git clone https://github.com/Kki44/guided-notes-buzzer-speckit-AIDLC.git
 Set-Location '.\guided-notes-buzzer-public'
 
 py -3.13 -m venv .venv
