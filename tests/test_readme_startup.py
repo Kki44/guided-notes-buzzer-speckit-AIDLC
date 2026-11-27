@@ -49,3 +49,19 @@ exit 2
 }
 """
     assert powershell(source, tmp_path).returncode == 0
+
+
+@pytest.mark.parametrize('blocked', [False, True])
+def test_gcloud_config_uses_writable_user_directory_and_rejects_file(tmp_path, blocked):
+    target = tmp_path / 'GuidedNotesBuzzer' / 'gcloud'
+    if blocked:
+        target.parent.mkdir()
+        target.write_text('existing file', encoding='utf-8')
+    section = README.split('# BEGIN GCLOUD USER CONFIG', 1)[1].split('# END GCLOUD USER CONFIG', 1)[0]
+    encoded = base64.b64encode(str(tmp_path).encode('utf-8')).decode('ascii')
+    setup = f"$env:LOCALAPPDATA = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('{encoded}'))\n"
+    source = setup + '$ErrorActionPreference = "Stop"\ntry {\n' + section
+    source += '\nif (-not (Test-Path -LiteralPath $env:CLOUDSDK_CONFIG -PathType Container)) { exit 2 }\nexit 0\n} catch { exit 3 }'
+    assert powershell(source, tmp_path).returncode == (3 if blocked else 0)
+    if blocked:
+        assert target.read_text(encoding='utf-8') == 'existing file'

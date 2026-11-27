@@ -129,8 +129,24 @@ Set-Location '.\guided-notes-buzzer-speckit-AIDLC'
             throw '找不到 gcloud.cmd，請安裝 Google Cloud CLI 並重新開啟 PowerShell。'
         }
     }
+    # BEGIN GCLOUD USER CONFIG
+    $env:CLOUDSDK_CONFIG = Join-Path $env:LOCALAPPDATA 'GuidedNotesBuzzer\gcloud'
+    if ((Test-Path -LiteralPath $env:CLOUDSDK_CONFIG) -and
+        -not (Test-Path -LiteralPath $env:CLOUDSDK_CONFIG -PathType Container)) {
+        throw 'Google CLI 設定路徑已被檔案占用，請先確認該路徑。'
+    }
+    [void](New-Item -ItemType Directory -Path $env:CLOUDSDK_CONFIG -Force -ErrorAction Stop)
+    $buzzerProbe = Join-Path $env:CLOUDSDK_CONFIG ([Guid]::NewGuid().ToString() + '.write-test')
+    try {
+        [IO.File]::WriteAllText($buzzerProbe, '')
+    } catch {
+        throw '目前使用者無法寫入 Google CLI 設定目錄，請檢查資料夾權限。'
+    } finally {
+        Remove-Item -LiteralPath $buzzerProbe -ErrorAction SilentlyContinue
+    }
+    # END GCLOUD USER CONFIG
     & $buzzerGcloud auth login --brief
-    if ($LASTEXITCODE -ne 0) { throw 'Google 登入失敗，請完成瀏覽器登入。' }
+    if ($LASTEXITCODE -ne 0) { throw 'Google CLI 登入或儲存憑證失敗，請查看上方錯誤並確認設定目錄可寫入。' }
 
     $buzzerServiceAccount = (Read-Host '輸入已分享試算表且已授權的服務帳戶電子郵件').Trim()
     if ($buzzerServiceAccount -notmatch '^[A-Za-z0-9._-]+@[A-Za-z0-9.-]+\.iam\.gserviceaccount\.com$') {
@@ -194,7 +210,7 @@ Set-Location '.\guided-notes-buzzer-speckit-AIDLC'
 | BUZZER_GOOGLE_ACCESS_TOKEN | 上述流程取得的服務帳戶短效權杖，優先使用 |
 | BUZZER_GOOGLE_SERVICE_ACCOUNT_JSON | 選用替代方式，環境變數值為完整 JSON 內容 |
 
-上述區塊將權杖直接指派到環境變數，畫面只顯示取得成功，請勿自行印出環境變數內容。密碼以隱藏方式輸入。程式沒有自動載入 .env。這些設定供同一 PowerShell 與其子程序使用，新筆電或新視窗需重新取得／設定。gcloud 自身登入憑證由 Google Cloud CLI 管理。
+上述區塊將權杖直接指派到環境變數，畫面只顯示取得成功，請勿自行印出環境變數內容。密碼以隱藏方式輸入。程式沒有自動載入 .env。這些設定供同一 PowerShell 與其子程序使用，新筆電或新視窗需重新取得／設定。gcloud 自身登入憑證由 Google Cloud CLI 管理，本流程將 CLI 快取存在 `%LOCALAPPDATA%\GuidedNotesBuzzer\gcloud`，請勿將此目錄加入 Git 或驗收附件。CLOUDSDK_CONFIG 需在同一 PowerShell 生效，上述整段會設定它。[Google 設定目錄說明](https://docs.cloud.google.com/sdk/docs/configurations)
 
 需要續期時先 Ctrl+C 停止 Flask，再在同一專案目錄重新執行第 6 節整段，會取得新的 1 小時權杖，並沿用目前環境中的老師密碼與簽章金鑰。權杖仍有效且只需重啟時，在同一視窗執行下列命令即可。
 
@@ -267,6 +283,7 @@ Set-Location '.\guided-notes-buzzer-speckit-AIDLC'
 | py -3.13 找不到 Python，或 python 指向 3.14 | 第 6 節首次建立環境時輸入實際 Python 3.13 完整路徑 |
 | 找不到 gcloud.cmd | 重開 PowerShell，或在第 6 節輸入安裝目錄下 bin/gcloud.cmd 的完整路徑 |
 | gcloud.ps1 被執行原則阻擋 | 統一使用 gcloud.cmd |
+| 登入成功但 Error saving Application Default Credentials／Permission denied | 更新專案後重跑第 6 節，會改用目前使用者的可寫入 CLI 設定目錄。若仍失敗，確認此目錄權限與安全軟體限制 |
 | 申請權杖 403 | 確認瀏覽器登入帳號已獲該服務帳戶 Token Creator，且相關 API 已啟用 |
 | 申請權杖 400 | 確認服務帳戶地址與 lifetime=3600s，未核准延長時不要要求 43200s |
 | 服務帳戶沒有原試算表編輯權 | 新副本明確共用給目前輸入的服務帳戶，授予編輯者，重新貼副本網址 |
