@@ -1,0 +1,28 @@
+@startuml
+!pragma layout smetana
+skinparam defaultFontName Microsoft JhengHei
+title 回填預覽與確認
+actor 老師 as T
+participant Flask as F
+database SQLite as D
+participant Google as G
+T -> F : 回填預覽（closed）
+F -> D : 如有待確認批次先核對
+F -> G : 重讀原格／錨點／保護
+F --> T : 題號／格位／原值／第一名答案＋簽章
+note over T,F : 明示未經正確性判定；取消不寫
+T -> F : 確認 preview
+F -> F : 驗證工作階段、期限、活動及摘要
+F -> G : 再讀並驗證原格
+alt 衝突／摘要變動
+F --> T : 停止整批
+else 一致
+F -> D : 保存待確認批次
+F -> G : 單次批次純文字寫入
+alt 回應不明
+F -> G : 重讀核對（不盲目重送）
+else 成功
+F -> D : 記錄成功回填
+end
+end
+@enduml

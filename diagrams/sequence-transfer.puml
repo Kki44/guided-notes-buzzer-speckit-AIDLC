@@ -1,0 +1,15 @@
+@startuml
+!pragma layout smetana
+skinparam defaultFontName Microsoft JhengHei
+title 重新選組（無審核）
+actor 學生 as U
+participant Flask as F
+database SQLite as D
+U -> F : 活動識別碼＋目標組別
+F -> D : 驗證同活動組別
+F -> D : 只更新本人 membership／version++
+F --> U : 新組別與版本
+note over F,D : 原組答案與其他組員不搬移；舊申請資料留存
+U -> F : 舊分頁／舊版本提交
+F --> U : 409 group_changed，要求確認最新組別
+@enduml

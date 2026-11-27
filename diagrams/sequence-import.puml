@@ -1,0 +1,26 @@
+@startuml
+!pragma layout smetana
+skinparam defaultFontName Microsoft JhengHei
+title 匯入預覽與確認
+actor 老師 as T
+participant Flask as F
+participant Google as G
+database SQLite as D
+T -> F : URL／工作表／預覽
+F -> G : inspect ＋ read
+F -> F : parse_questions／工作階段摘要簽章
+F --> T : 題號／題目／答案格／preview
+alt 取消
+T -> T : 關閉預覽（無活動）
+else 確認
+T -> F : 名稱＋preview
+F -> F : 驗證簽章／工作階段／20分鐘
+F -> G : 重讀解析
+F -> F : 核對摘要
+alt 摘要相同
+F -> D : 交易建立活動及題目快照
+else 來源變更
+F --> T : 拒絕，請重新預覽
+end
+end
+@enduml

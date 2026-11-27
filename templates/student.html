@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}學生作答{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='student.js') }}" defer></script>{% endblock %}
+{% block content %}
+<header class="page-heading">
+    <h1>課堂搶答</h1>
+    <p id="phase" class="phase" role="status"></p>
+</header>
+<p id="feedback" class="feedback" role="status"></p>
+<div class="workspace student-workspace">
+    <div class="stack">
+        <section class="panel stack" aria-labelledby="join-title">
+            <h2 id="join-title">參加活動</h2>
+            <form id="select-activity" class="inline-form">
+                <label class="field">活動識別碼 <input name="activity" inputmode="numeric" pattern="[1-9][0-9]*" maxlength="19" required></label>
+                <button>讀取活動</button>
+            </form>
+            <input id="activities" type="hidden">
+            <form id="join" class="stack" hidden>
+                <div class="field">
+                    <label for="join-group">組別</label>
+                    <select id="join-group" name="group" required></select>
+                </div>
+                <button class="primary">加入</button>
+            </form>
+            <p class="hint">選錯組可重新選組，原組已提交答案會保留；同瀏覽器分頁共用組別。</p>
+            <p id="membership" class="membership" role="status"></p>
+        </section>
+    </div>
+    <section class="stack" aria-labelledby="results-title">
+        <h2 id="results-title">題目總覽</h2>
+        <form id="answer" class="panel stack answer-panel" hidden>
+            <h2 id="answer-title">提交答案</h2>
+            <input name="number" type="hidden">
+            <p id="selected-prompt" class="selected-prompt" aria-live="polite" hidden></p>
+            <label class="field">答案 <textarea name="answer" maxlength="4000" required></textarea></label>
+            <p class="hint">送出會覆蓋本組這一題的答案，並更新搶答時間。</p>
+            <button class="primary">送出答案</button>
+        </form>
+        <div id="questions" class="question-list student-questions"></div>
+    </section>
+</div>
+{% endblock %}

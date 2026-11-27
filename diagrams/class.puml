@@ -1,0 +1,120 @@
+@startuml
+title 資料類別圖｜12 張 SQLite 表（不是 ORM 類別）
+!pragma layout smetana
+skinparam defaultFontName Microsoft JhengHei
+hide methods
+class "activities｜活動" as A {
+  id : INTEGER PK
+  name : TEXT
+  phase : ready / open / closed
+  spreadsheet : TEXT nullable
+  sheet : INTEGER nullable
+  revision : INTEGER
+  worksheet_version : INTEGER
+  import_key : TEXT nullable UNIQUE
+  joined_once : INTEGER boolean default 0
+}
+class "groups｜組別" as G {
+  id : INTEGER PK
+  activity : FK activities
+  name : TEXT
+  unique : activity + name
+}
+class "memberships｜加入狀態" as M {
+  browser : TEXT
+  activity : FK activities
+  team : FK groups
+  version : INTEGER default 0
+  PK : browser + activity
+}
+class "transfer_requests｜舊換組申請（唯讀）" as TR {
+  id : INTEGER PK AUTOINCREMENT
+  activity : FK activities
+  browser : TEXT
+  source / target : FK groups
+  status : pending / approved / rejected
+}
+class "questions｜題目與原格" as Q {
+  id : INTEGER PK
+  activity : FK activities
+  number : TEXT
+  label_row / label_col : INTEGER
+  answer_row / answer_col : INTEGER
+  marker : TEXT
+  source : JSON text nullable
+  unique : activity + number
+  unique : activity + answer_row + answer_col
+}
+class "submissions｜最後有效答案" as S {
+  question : FK questions
+  team : FK groups
+  answer : TEXT
+  timestamp : INTEGER epoch nanoseconds
+  sequence : INTEGER UNIQUE
+  PK : question + team
+}
+class "receipts｜重送識別" as R {
+  activity : FK activities
+  browser / receipt : TEXT
+  number / answer / response : TEXT
+  PK : activity + browser + receipt
+}
+class "rankings｜順位與舊判定欄位" as K {
+  question / team : composite FK submissions
+  rank : INTEGER
+  correct : NULL / 0 / 1
+  PK : question + team
+  unique : question + rank
+}
+class "exports｜上次成功回填" as X {
+  question : PK FK questions
+  written : TEXT
+  revision : INTEGER
+}
+class "export_batches｜待確認批次" as B {
+  activity : PK FK activities
+  spreadsheet : TEXT UNIQUE
+  sheet / revision : INTEGER
+  changes : JSON text
+}
+class "round_history｜歷史快照" as H {
+  id : INTEGER PK
+  activity : FK activities
+  snapshot : JSON text
+}
+class "identifiers｜不重用識別" as I {
+  kind : TEXT PK
+  last_id : INTEGER
+}
+A "1" -- "0..*" G
+A "1" -- "0..*" M
+G "1" -- "0..*" M
+A "1" -- "0..*" Q
+A "1" -- "0..*" TR
+TR "0..*" --> "1" G : source / target
+Q "1" -- "0..*" S
+G "1" -- "0..*" S
+S "1" -- "0..1" K
+Q "1" -- "0..1" X
+A "1" -- "0..*" R
+A "1" -- "0..1" B
+A "1" -- "0..*" H
+M .. TR : browser + activity 邏輯對應，非外鍵
+I .. A : 配發活動 ID
+I .. G : 配發組別 ID
+I .. S : 交易內配發有效提交 sequence
+note bottom of A
+  partial UNIQUE：全系統至多一場 phase=open。
+  worksheet_version、memberships.version 由初始化遷移補入。
+  準備階段可刪組；非 open 且無待核對回填可確認刪活動。
+  刪活動依外鍵順序清除相關資料；有效提交序號由 identifiers 配發。
+end note
+note bottom of TR
+  partial UNIQUE(activity, browser) WHERE status=pending。
+  新流程不再建立或審核申請；保留舊資料。
+end note
+note bottom of H
+  JSON 保存原表、工作表、題目定位、順位／答案／判定。
+  舊資料僅相容留存；無舊輪次介面或 API，不新增輪次。
+end note
+@enduml

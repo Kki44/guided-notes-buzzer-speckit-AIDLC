@@ -1,0 +1,26 @@
+@startuml
+!pragma layout smetana
+skinparam defaultFontName Microsoft JhengHei
+title 課堂總時序
+actor 老師 as T
+actor 學生 as U
+participant Flask as F
+database SQLite as D
+participant Google as G
+T -> F : 選分頁／預覽
+F -> G : 讀取與解析
+F --> T : 題號／題目／答案格＋簽章
+T -> F : 確認預覽＋名稱
+F -> G : 重讀核對摘要
+F -> D : 建立 ready 活動與題目
+T -> F : 建立至少兩組／開放
+F -> D : ready → open
+U -> F : 活動識別碼＋選組加入
+U -> F : 提交／修改
+F -> D : 交易驗證版本、同答案、配置 sequence
+T -> F : 結束
+F -> D : open → closed；各題 sequence 排名
+F --> U : 本組答案／名次＋成功組名
+T -> F : 預覽回填／確認
+F -> G : 再驗原格後寫第一名答案
+@enduml

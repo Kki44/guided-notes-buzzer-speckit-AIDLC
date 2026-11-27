@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}老師管理{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='teacher.js') }}" defer></script>{% endblock %}
+{% block content %}
+<header class="page-heading">
+    <h1>老師管理台</h1>
+    {% if logged_in %}<p id="phase" class="phase" role="status"></p>{% endif %}
+</header>
+<p id="feedback" class="feedback" role="status"></p>
+{% if not logged_in %}
+<section class="panel login-panel" aria-labelledby="login-title">
+    <h2 id="login-title">登入活動管理</h2>
+    <form id="login" class="stack">
+        <label class="field">管理密碼 <input name="password" type="password" autocomplete="current-password" required></label>
+        <button class="primary">登入</button>
+    </form>
+</section>
+{% else %}
+<div class="workspace teacher-workspace" data-activity="{{ activity or '' }}">
+    <aside class="stack" aria-label="活動設定">
+        <section class="panel stack">
+            <h2>活動</h2>
+            <label class="field">目前活動 <select id="activities"></select></label>
+            <p id="activity-code" class="membership"></p>
+            <label class="field">活動專屬網址 <input id="activity-url" readonly></label>
+            <button id="delete-activity" class="danger" type="button" disabled>刪除活動</button>
+            <button id="copy-url" type="button" disabled>複製活動網址</button>
+            <p class="hint">選「建立新活動」可匯入下一份學習單；已結束活動保持唯讀。</p>
+        </section>
+        <section class="panel stack">
+            <h2>組別設定</h2>
+            <form id="group" class="inline-form">
+                <label class="field">組別名稱 <input name="name" required></label>
+                <button>建立組別</button>
+            </form>
+            <form id="batch-groups" class="inline-form">
+                <label class="field">組別數量 <input name="count" type="number" min="1" max="100" step="1" value="2" required></label>
+                <button>批次建立組別</button>
+            </form>
+            <p id="groups-lock-hint" class="hint"></p>
+            <ul id="group-codes" class="group-list"></ul>
+        </section>
+    </aside>
+    <div class="stack">
+        <section class="panel stack">
+            <h2>匯入學習單</h2>
+            <form id="notes" class="stack">
+                <label class="field">活動名稱 <input name="name" maxlength="200" required></label>
+                <label class="field">Google Sheets 連結 <input name="url" type="url" placeholder="https://docs.google.com/spreadsheets/…" required></label>
+                <div class="inline-form">
+                    <div class="field"><label for="notes-sheet">工作表</label><select id="notes-sheet" name="sheet"><option value="">自動選擇單一工作表</option></select></div>
+                    <button type="button" id="inspect">讀取工作表</button>
+                    <button class="primary">預覽題目</button>
+                </div>
+            </form>
+            <section id="import-preview" class="panel stack" aria-labelledby="import-preview-title" hidden>
+                <h3 id="import-preview-title">確認匯入內容</h3>
+                <div id="import-preview-content" class="preview-scroll"></div>
+                <div class="actions">
+                    <button id="confirm-import" class="primary" type="button">確認匯入並建立活動</button>
+                    <button id="cancel-import" type="button">取消匯入</button>
+                </div>
+            </section>
+        </section>
+        <section class="panel stack">
+            <h2>搶答控制</h2>
+            <div class="actions">
+                <button id="open" class="primary" disabled>開放全部題目</button>
+                <button id="close" class="danger" disabled>結束搶答</button>
+                <button id="export" disabled>預覽回填 Google Sheets</button>
+            </div>
+            <p class="hint">結束後不再開放；第一名取得搶答成功資格，系統不判定答案正確性。</p>
+            <section id="export-preview" class="panel stack" aria-labelledby="export-preview-title" hidden>
+                <h3 id="export-preview-title">確認 Google Sheets 回填</h3>
+                <p class="review-result">搶答成功答案未經正確性判定。確認後才寫入；取消不會更改原表。請暫停共同編輯原表。</p>
+                <p id="export-target" class="hint"></p>
+                <div id="export-preview-content" class="preview-scroll"></div>
+                <div class="actions">
+                    <button id="confirm-export" class="primary" type="button">確認寫回 Google Sheets</button>
+                    <button id="cancel-export" type="button">取消回填</button>
+                </div>
+            </section>
+        </section>
+        <section class="stack" aria-labelledby="monitor-title">
+            <h2 id="monitor-title">題目與作答</h2>
+            <div id="questions" class="question-list"></div>
+        </section>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

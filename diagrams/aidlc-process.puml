@@ -1,0 +1,27 @@
+@startuml
+title AIDLC＋Diagram First 與 SDLC 產物對照
+skinparam defaultFontName Microsoft JhengHei
+start
+:Constitution\n章程：測試、驗證、環境機密、commit;
+:Specify／SRS\n本系統需求、範圍與驗收條件;
+:PlantUML Design First\n./diagrams/ 組件、類別、時序與狀態圖;
+:PlantUML CLI\n所有 .puml → 同目錄 PNG;
+while (需要規格釐清或審核修訂？) is (是)
+  :Clarify\n使用者確認需求，回寫 SRS 與圖表;
+endwhile (否)
+:Plan／SDS\n以圖表決定模組、權限、交易與同步;
+:Tasks／LLD\nAPI、函式、錯誤、測試追蹤;
+:Implement\n測試先失敗 → 實作 → 測試通過;
+:圖碼一致性驗證\n核對模組、資料、時序與契約;
+while (測試或一致性不通過？) is (是)
+  :修正、重新渲染與重新驗證;
+endwhile (否)
+:完整測試、人工驗收與 commit\n保留證據、限制及待決項;
+:部署維護\n目前範圍為本機單程序;
+note right
+  本次重建 a447f88 現況並提交審核。
+  不宣稱重跑過去所有開發階段，
+  使用者核准與真實表驗收仍須另行完成。
+end note
+stop
+@enduml

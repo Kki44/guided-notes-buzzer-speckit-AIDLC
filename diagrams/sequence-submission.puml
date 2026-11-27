@@ -1,0 +1,26 @@
+@startuml
+!pragma layout smetana
+skinparam defaultFontName Microsoft JhengHei
+title 提交與截止
+actor 組員 as U
+actor 老師 as T
+participant Flask as F
+database SQLite as D
+U -> F : 題號／答案／receipt／group／membership_version
+F -> D : BEGIN IMMEDIATE（與截止序列化）
+F -> F : 驗證入組版本、題目、輸入
+alt 成功 receipt 重試
+F --> U : 原回應，不重計
+else 尚未開放或已結束
+F --> U : 拒絕
+else 同組同題 trim 後答案相同
+F --> U : 409 答案未變更，無須重新提交
+else 新有效答案
+F -> D : 配發持久 sequence／UPSERT 答案／保存 receipt
+F --> U : 成功／更新已作答預覽
+end
+T -> F : close
+F -> D : 交易鎖定，各題 ORDER BY sequence
+F -> D : phase=closed；第一名成功
+F --> T : 固定結果（重複 close 不重算）
+@enduml

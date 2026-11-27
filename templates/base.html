@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="csrf" content="{{ csrf }}">
+    <title>{% block title %}{% endblock %}｜Guided Notes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='classroom.css') }}">
+    {% block scripts %}{% endblock %}
+</head>
+<body>
+    <header class="topbar">
+        <div class="shell topbar-inner">
+            <div class="brand">
+                <span class="brand-mark" aria-hidden="true"></span>Guided Notes
+            </div>
+        </div>
+    </header>
+    <main class="shell">{% block content %}{% endblock %}</main>
+</body>
+</html>

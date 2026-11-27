@@ -1,0 +1,12 @@
+@startuml
+!pragma layout smetana
+skinparam defaultFontName Microsoft JhengHei
+title 活動狀態
+[*] --> ready : 確認匯入預覽建立
+ready --> open : 至少一題／兩組／沒有其他 open
+open --> closed : 截止與提交交易序列化
+closed --> closed : 唯讀恢復／重複截止／回填
+note right of closed : 不重開、不換表；下一份表另建活動
+ready --> [*] : 老師確認刪除（無待核對回填）
+closed --> [*] : 老師確認刪除（無待核對回填）
+@enduml

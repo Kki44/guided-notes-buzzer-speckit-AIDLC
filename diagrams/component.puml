@@ -1,0 +1,31 @@
+@startuml
+!pragma layout smetana
+skinparam defaultFontName Microsoft JhengHei
+title 組件圖｜核心搶答
+package 瀏覽器 {
+[老師頁面] as T
+[學生頁面] as U
+}
+package Flask {
+[權限與 CSRF] as A
+[活動／組別／直接換組] as B
+[匯入預覽簽章] as I
+[提交與固定順位] as S
+[回填預覽／確認與核對] as E
+}
+database SQLite as D
+cloud "Google Sheets／Drive" as G
+T --> A : HTTP JSON／約每秒輪詢
+U --> A : HTTP JSON／約每秒輪詢
+A --> B
+A --> I
+A --> S
+A --> E
+B --> D
+S --> D
+I --> G : 檢視／確認重讀
+I --> D : 確認建立快照
+E --> G : 預覽重讀／確認批次寫入
+E --> D
+note bottom of D : 舊申請、判定、輪次僅相容留存（無入口）；核心搶答不依賴 Google
+@enduml
