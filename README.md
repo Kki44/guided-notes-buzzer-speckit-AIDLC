@@ -74,7 +74,7 @@ instance/      本機活動資料庫（Git 忽略）
 
 ```powershell
 git clone https://github.com/Kki44/guided-notes-buzzer-speckit-AIDLC.git
-Set-Location '.\guided-notes-buzzer-public'
+Set-Location '.\guided-notes-buzzer-speckit-AIDLC'
 
 py -3.13 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
