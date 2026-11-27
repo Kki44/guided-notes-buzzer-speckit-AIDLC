@@ -68,98 +68,151 @@ specs/         SRS、SDS、LLD、契約、任務與追蹤
 instance/      本機活動資料庫（Git 忽略）
 ```
 
-## 5. 取得原始碼與安裝
+## 5. 助教與新筆電的首次準備
 
-需要 Git、Python 3.13；本節命令使用 Windows PowerShell。可直接從公開儲存庫下載原始碼。
+本指南使用 Windows PowerShell。先安裝 [Python 3.13](https://www.python.org/downloads/)、[Git](https://git-scm.com/downloads) 與 [Google Cloud CLI](https://cloud.google.com/sdk/docs/install)，安裝完成後重新開啟 PowerShell。展示使用 Chrome 與 Edge。請下載原始碼後在專案資料夾開啟終端機，家用筆電不必建立 D 槽或沿用作者的路徑。
 
 ```powershell
 git clone https://github.com/Kki44/guided-notes-buzzer-speckit-AIDLC.git
 Set-Location '.\guided-notes-buzzer-speckit-AIDLC'
-
-py -3.13 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-.\.venv\Scripts\python.exe -m pytest -q --tb=short
 ```
 
-已在既有專案目錄工作時，不需再次 clone；先切到該專案根目錄。若沒有 `py` 啟動器，可用確認為 Python 3.13 的 `python` 執行 `python -m venv .venv`。既有虛擬環境若是其他版本，不要直接混用套件。
+也可以在 GitHub 選 Code → Download ZIP，解壓後在含有 requirements-dev.txt 的資料夾開啟 PowerShell。若已下載專案，直接進入該資料夾。虛擬環境請在新電腦重建。
 
-自動測試會建立隔離資料庫與試算表測試替身，不需要真實 Google 憑證，也不會寫入你的學習單。
+### Google Cloud 與試算表的一次性準備
 
-## 6. 環境變數與機敏資料
+1. 登入 Google Cloud Console，建立或選擇有權管理的專案，記下專案 ID。
+2. 在「API 和服務 → 程式庫」啟用 Google Sheets API、Google Drive API、IAM Service Account Credentials API。若 IAM API 尚未啟用也需啟用。
+3. 在「IAM 與管理 → 服務帳戶」建立或選用服務帳戶，複製完整服務帳戶電子郵件。
+4. 在該服務帳戶的「權限／管理存取權」新增要執行展示的 Google 帳號，授予 Service Account Token Creator（roles/iam.serviceAccountTokenCreator）。助教可以使用自行建立的服務帳戶，或由專案管理員授權助教的 Google 帳號使用指定帳戶。
+5. 準備一份答案空白的原生 Google Sheets 副本。若仍顯示 .XLSX，先「檔案 → 另存為 Google 試算表」。
+6. 在**副本**按「共用」，明確加入第 3 步的服務帳戶電子郵件，角色選「編輯者」，儲存後複製副本網址。每份新副本都要重新確認這個帳號的權限。
 
-| 環境變數 | 必要性 | 用途 |
-| --- | --- | --- |
-| `BUZZER_TEACHER_PASSWORD` | 啟動必填 | 老師管理台密碼 |
-| `BUZZER_SECRET_KEY` | 啟動必填 | Cookie 與預覽確認簽章 |
-| `BUZZER_GOOGLE_ACCESS_TOKEN` | 真實 Google 操作時擇一 | 短效存取權杖，存在時優先使用 |
-| `BUZZER_GOOGLE_SERVICE_ACCOUNT_JSON` | 真實 Google 操作時擇一 | 服務帳戶 JSON 的完整內容，不是檔案路徑 |
+上面的 Token Creator 是「誰可以取得服務帳戶的短效權杖」，試算表共用的編輯者是「服務帳戶可以編輯哪份表」，兩者都要完成。家用筆電須用已獲授權的 Google 帳號登入。無法修改 IAM 權限時需要專案管理員處理。
 
-不要把密碼、權杖、金鑰或完整憑證貼進原始碼、README、Git commit、截圖或日誌。應用程式以環境變數讀取機敏值，不依賴儲存庫中的憑證檔，也沒有自動載入 `.env` 的流程。
+此流程使用短效服務帳戶權杖，無須下載服務帳戶私鑰。預設申請 3,600 秒，較長期限需要額外組織政策。本專案不自動續期。[Google 短效憑證說明](https://docs.cloud.google.com/iam/docs/create-short-lived-credentials-direct)、[權杖 API](https://docs.cloud.google.com/iam/docs/reference/credentials/rest/v1/projects.serviceAccounts/generateAccessToken)
 
-以下在**準備啟動 Flask 的同一個 PowerShell**設定管理密碼、首次簽章金鑰與短效權杖；輸入時不顯示文字，也不將實際值寫入命令歷史：
+## 6. 從安裝到取得權杖及啟動，一次執行
 
+完成第 5 節後，請在**專案根目錄的同一個 PowerShell**貼上以下整個區塊。依序完成 Python 檢查、安裝套件、Google 登入、輸入服務帳戶、申請新權杖、設定老師密碼及啟動。首次會開啟瀏覽器登入 Google。任一步驟失敗會停止，請先看錯誤，再重新執行整段。
+
+<!-- unified-startup -->
 ```powershell
-$teacherInput = Read-Host '輸入老師管理密碼' -AsSecureString
-$env:BUZZER_TEACHER_PASSWORD = [System.Net.NetworkCredential]::new('', $teacherInput).Password
+& {
+    $ErrorActionPreference = 'Stop'
+    if (-not (Test-Path -LiteralPath '.\requirements-dev.txt')) {
+        throw '請先進入專案根目錄，該目錄應有 requirements-dev.txt。'
+    }
 
-if (-not $env:BUZZER_SECRET_KEY) {
-    $env:BUZZER_SECRET_KEY = & .\.venv\Scripts\python.exe -c "import secrets; print(secrets.token_urlsafe(48))"
-    if ($LASTEXITCODE -ne 0) { throw '無法產生簽章金鑰。' }
+    if (-not (Test-Path -LiteralPath '.\.venv\Scripts\python.exe')) {
+        $buzzerPython = Read-Host '輸入 Python 3.13 的 python.exe 完整路徑（不加引號）'
+        if (-not (Test-Path -LiteralPath $buzzerPython -PathType Leaf)) {
+            throw '找不到 Python，請確認安裝位置與路徑。'
+        }
+        & $buzzerPython -c "import sys; sys.exit(sys.version_info[:2] != (3, 13))"
+        if ($LASTEXITCODE -ne 0) { throw '請選用 Python 3.13 的執行檔。' }
+        & $buzzerPython -m venv .venv
+        if ($LASTEXITCODE -ne 0) { throw '建立虛擬環境失敗。' }
+    }
+    $buzzerPython = (Resolve-Path '.\.venv\Scripts\python.exe').Path
+    & $buzzerPython -c "import sys; sys.exit(sys.version_info[:2] != (3, 13))"
+    if ($LASTEXITCODE -ne 0) { throw '既有 .venv 不是 Python 3.13，請改名保留後重新建立。' }
+    & $buzzerPython -m pip install -r requirements-dev.txt
+    if ($LASTEXITCODE -ne 0) { throw '安裝套件失敗，請確認網路及 Python 版本。' }
+
+    $buzzerGcloudCommand = Get-Command gcloud.cmd -ErrorAction SilentlyContinue
+    if ($buzzerGcloudCommand) {
+        $buzzerGcloud = $buzzerGcloudCommand.Source
+    } else {
+        $buzzerGcloud = Read-Host '輸入 Google Cloud SDK 的 bin\gcloud.cmd 完整路徑（不加引號）'
+        if (-not (Test-Path -LiteralPath $buzzerGcloud -PathType Leaf)) {
+            throw '找不到 gcloud.cmd，請安裝 Google Cloud CLI 並重新開啟 PowerShell。'
+        }
+    }
+    & $buzzerGcloud auth login --brief
+    if ($LASTEXITCODE -ne 0) { throw 'Google 登入失敗，請完成瀏覽器登入。' }
+
+    $buzzerServiceAccount = (Read-Host '輸入已分享試算表且已授權的服務帳戶電子郵件').Trim()
+    if ($buzzerServiceAccount -notmatch '^[A-Za-z0-9._-]+@[A-Za-z0-9.-]+\.iam\.gserviceaccount\.com$') {
+        throw '服務帳戶電子郵件格式不正確，請從 Google Cloud 複製完整地址。'
+    }
+    Remove-Item Env:BUZZER_GOOGLE_ACCESS_TOKEN -ErrorAction SilentlyContinue
+    try {
+        $env:BUZZER_IAM_SOURCE_TOKEN = & $buzzerGcloud auth print-access-token
+        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($env:BUZZER_IAM_SOURCE_TOKEN)) {
+            throw '目前 Google 帳號無法取得權杖，請重新登入。'
+        }
+        $buzzerBody = @{
+            scope = @(
+                'https://www.googleapis.com/auth/spreadsheets'
+                'https://www.googleapis.com/auth/drive.metadata.readonly'
+            )
+            lifetime = '3600s'
+        } | ConvertTo-Json
+        $env:BUZZER_GOOGLE_ACCESS_TOKEN = (Invoke-RestMethod -Method Post -ErrorAction Stop `
+            -Uri "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${buzzerServiceAccount}:generateAccessToken" `
+            -Headers @{ Authorization = "Bearer $env:BUZZER_IAM_SOURCE_TOKEN" } `
+            -ContentType 'application/json' -Body $buzzerBody).accessToken
+        if ([string]::IsNullOrWhiteSpace($env:BUZZER_GOOGLE_ACCESS_TOKEN)) {
+            throw 'Google 未回傳權杖。'
+        }
+    } catch {
+        Remove-Item Env:BUZZER_GOOGLE_ACCESS_TOKEN -ErrorAction SilentlyContinue
+        throw '申請權杖失敗。請核對登入帳號的 Token Creator 權限、服務帳戶地址及 IAM Service Account Credentials API。'
+    } finally {
+        Remove-Item Env:BUZZER_IAM_SOURCE_TOKEN -ErrorAction SilentlyContinue
+    }
+
+    if ([string]::IsNullOrWhiteSpace($env:BUZZER_TEACHER_PASSWORD)) {
+        $buzzerPassword = Read-Host '設定這次展示的老師管理密碼' -AsSecureString
+        $env:BUZZER_TEACHER_PASSWORD = [System.Net.NetworkCredential]::new('', $buzzerPassword).Password
+        Remove-Variable buzzerPassword
+    }
+    if ([string]::IsNullOrWhiteSpace($env:BUZZER_TEACHER_PASSWORD)) { throw '老師密碼不可空白。' }
+    if ([string]::IsNullOrWhiteSpace($env:BUZZER_SECRET_KEY)) {
+        $env:BUZZER_SECRET_KEY = & $buzzerPython -c "import secrets; print(secrets.token_urlsafe(48))"
+        if ($LASTEXITCODE -ne 0) { throw '無法產生簽章金鑰。' }
+    }
+    Write-Host '取得服務帳戶短效權杖成功，約 1 小時有效。'
+    Write-Host '老師 http://127.0.0.1:5000/teacher  學生 http://127.0.0.1:5000/'
+    & $buzzerPython -m flask --app buzzer run --host 127.0.0.1
+    if ($LASTEXITCODE -ne 0) { throw '啟動失敗，請查看 Flask 訊息並確認 5000 連接埠可用。' }
 }
-
-$tokenInput = Read-Host '貼上 Google 短效存取權杖' -AsSecureString
-$env:BUZZER_GOOGLE_ACCESS_TOKEN = [System.Net.NetworkCredential]::new('', $tokenInput).Password
-Remove-Variable teacherInput, tokenInput
 ```
+<!-- /unified-startup -->
 
-權杖取得方式見下一節。若改用服務帳戶 JSON，須由安全來源提供完整 JSON 至對應環境變數；不使用短效權杖時，從目前 PowerShell 移除 `BUZZER_GOOGLE_ACCESS_TOKEN`，以免它優先覆蓋 JSON 模式。
+第一次輸入 Python 路徑時，可在開始功能表搜尋 Python 3.13，開啟檔案位置查看安裝目錄。常見位置為 `%LOCALAPPDATA%\Programs\Python\Python313\python.exe`，以實際安裝為準。從舊電腦複製的 .venv 可能無法使用，請先將該資料夾改名保存，再重新執行上述區塊。
 
-```powershell
-# 僅在改用已設定的服務帳戶 JSON 模式時執行
-Remove-Item Env:BUZZER_GOOGLE_ACCESS_TOKEN -ErrorAction SilentlyContinue
-```
+如果看見 `Running on http://127.0.0.1:5000`，代表服務已啟動。PowerShell 持續佔用是正常情況。保持此視窗開啟，去瀏覽器操作老師及學生頁面。
 
-僅檢查設定是否存在，不印出內容：
+## 7. 權杖、密碼與重新啟動
 
-```powershell
-[pscustomobject]@{
-    TeacherPasswordLoaded = -not [string]::IsNullOrWhiteSpace($env:BUZZER_TEACHER_PASSWORD)
-    SecretKeyLoaded = -not [string]::IsNullOrWhiteSpace($env:BUZZER_SECRET_KEY)
-    GoogleTokenLoaded = -not [string]::IsNullOrWhiteSpace($env:BUZZER_GOOGLE_ACCESS_TOKEN)
-    GoogleJsonLoaded = -not [string]::IsNullOrWhiteSpace($env:BUZZER_GOOGLE_SERVICE_ACCOUNT_JSON)
-}
-```
+| 環境變數 | 用途 |
+| --- | --- |
+| BUZZER_TEACHER_PASSWORD | 老師登入密碼 |
+| BUZZER_SECRET_KEY | Cookie 與預覽簽章，沿用同值可延續登入 |
+| BUZZER_GOOGLE_ACCESS_TOKEN | 上述流程取得的服務帳戶短效權杖，優先使用 |
+| BUZZER_GOOGLE_SERVICE_ACCOUNT_JSON | 選用替代方式，環境變數值為完整 JSON 內容 |
 
-PowerShell 的這些設定供目前程序及子程序使用，關閉視窗後不會自動在新視窗恢復。若要延續原有登入與預覽，重新啟動時須從安全來源提供**相同的** `BUZZER_SECRET_KEY`；更換它會讓舊 Cookie 與尚未確認的預覽失效。不要為了方便而把實際值寫進啟動腳本或提交儲存庫。
+上述區塊將權杖直接指派到環境變數，畫面只顯示取得成功，請勿自行印出環境變數內容。密碼以隱藏方式輸入。程式沒有自動載入 .env。這些設定供同一 PowerShell 與其子程序使用，新筆電或新視窗需重新取得／設定。gcloud 自身登入憑證由 Google Cloud CLI 管理。
 
-## 7. Google Sheets 授權與學習單
-
-1. 準備原生 Google 試算表；若檔案仍以 `.xlsx` 型別開在雲端硬碟，先另存為 Google 試算表，再使用新連結。
-2. 在 Google Cloud 專案啟用 Google Sheets API 與 Google Drive API。
-3. 使用服務帳戶作為讀寫身分，將測試試算表分享給該服務帳戶電子郵件，授予編輯權。
-4. 使用該服務帳戶憑證或以該身分取得的短效權杖，設定上一節對應環境變數。
-5. 若組織禁止建立服務帳戶金鑰，可依 [無金鑰短效權杖流程](specs/001-guided-notes-buzzer/quickstart.md) 使用 IAM Service Account Credentials API 與管理員授予的 Service Account Token Creator 權限，不需要關閉組織限制。
-
-短效權杖不會由本應用自動續期。到期後重新取得權杖，更新環境，再重啟 Flask；不需要重建活動。若 PowerShell 阻擋 `gcloud.ps1`，可使用 `gcloud.cmd` 執行同一組 CLI 命令。
-
-原版學習單以唯一「題號／題目／作答」表頭及合併格定位答案。合併主題下的小題會變成 Q1.1、Q1.2 等，分別提交與結算。亦相容成對的 Qn／{{Qn}} 標記。系統保存實際原格與錨點，不把第幾題寫死在某個儲存格。
-
-建議以未填答案的副本驗收。多張工作表時先「讀取工作表」，再選擇正確工作表；只有一張時可自動選取。
-
-## 8. 啟動與重新啟動
-
-確認在專案根目錄，且同一 PowerShell 已載入必要環境變數：
+需要續期時先 Ctrl+C 停止 Flask，再在同一專案目錄重新執行第 6 節整段，會取得新的 1 小時權杖，並沿用目前環境中的老師密碼與簽章金鑰。權杖仍有效且只需重啟時，在同一視窗執行下列命令即可。
 
 ```powershell
 .\.venv\Scripts\python.exe -m flask --app buzzer run --host 127.0.0.1
 ```
 
-- 老師管理台：<http://127.0.0.1:5000/teacher>
-- 學生作答頁：<http://127.0.0.1:5000/>
+更換 BUZZER_SECRET_KEY 會使舊 Cookie 與未確認預覽失效，可重新登入及加入。SQLite 中的活動與答案仍存在。更新程式後按 Ctrl+F5 重新載入頁面。
 
-Flask 會持續佔用該 PowerShell，這是正常執行狀態。停止請按 **Ctrl+C**。更新程式或權杖後，從同一視窗重新執行啟動指令；頁面按 **Ctrl+F5** 載入新腳本。
+## 8. 在同一筆電展示兩組學生
 
-不要同時啟動兩個服務程序來操作同一份活動資料；接收序列與回填鎖是程序內共用狀態。
+| 使用者 | 瀏覽器工作階段 | 網址 |
+| --- | --- | --- |
+| 老師 | Chrome 一般視窗 | http://127.0.0.1:5000/teacher |
+| 第 1 組 | Chrome 無痕視窗 | http://127.0.0.1:5000/ |
+| 第 2 組 | Edge InPrivate 視窗 | http://127.0.0.1:5000/ |
+
+一般分頁共用工作階段，多個 Chrome 無痕視窗也可能共用同一無痕工作階段。不同瀏覽器的隔離工作階段可避免兩組互相切換身分。展示先使用筆電上的三個視窗。127.0.0.1 代表當前電腦，其他同學的手機無法用這個網址連上筆電。
 
 ## 9. 完整操作流程
 
@@ -173,10 +226,30 @@ Flask 會持續佔用該 PowerShell，這是正常執行狀態。停止請按 **
 8. 老師按「預覽回填 Google Sheets」，檢查目標表、格位、原值與搶答成功答案。答案未經正確性判定；按取消不寫，按確認才重驗原格並批次寫入。原題／保護／內容衝突則整批停止。
 9. 下一份學習單選「建立新活動」重做匯入。舊活動仍可用清單或專屬網址查看，不會因建立下一場而被覆蓋。
 
+### 助教建議驗收順序與預期結果
+
+| 操作 | 預期結果 |
+| --- | --- |
+| 匯入預覽後取消 | 活動尚未建立，Google 原表未寫入 |
+| 確認匯入並建立兩組 | 出現活動識別碼、正確題目與答案格位置 |
+| 不同組各交 Q1 | 老師可見兩組答案與台灣時間，學生只見本組答案 |
+| 同組再開一個工作階段 | 可同步取得本組最後有效答案與已作答狀態 |
+| 第 1 組先交、第 2 組後交、第 1 組修改 | 結束時第 2 組排名在前，第 1 組修改後順位後移 |
+| 原答案不變再送出 | 顯示答案未變更，提交時間與順位不更新 |
+| 重新選組並用舊分頁草稿送出 | 舊版本送出拒絕，原組既有答案保留 |
+| 結束後嘗試送出、重開或換表 | 不允許，下一份表需建立新活動 |
+| 預覽回填後取消，再預覽確認 | 取消不寫入，確認才將第一名答案寫入對應答案格 |
+| 人工修改預期答案格後回填 | 整批停止並指出衝突，其他格也不寫入 |
+| 刪除活動先取消，再確認 | 取消保留資料，確認清除本機活動；原 Google 內容保留 |
+| 開放中或回填待核對時刪除 | 操作拒絕並顯示原因 |
+| 重新整理活動專屬網址 | 恢復相同活動資料，不重複建立活動 |
+
+跨班展示請每班建立新活動。可從空白範本各建副本，將副本共用給服務帳戶。已回填活動若被手動清空原表，再次回填會因原值不同停止，請以新活動讀取空白表。所有人工驗收請記錄實際結果與去敏截圖。
+
 ## 10. 自動測試
 
 ```powershell
-Set-Location 'D:\SWE proj'
+# 在含有 requirements-dev.txt 的專案根目錄執行
 .\.venv\Scripts\python.exe -m pytest -q --tb=short
 .\.venv\Scripts\python.exe -m pytest -q tests/browser_smoke.py
 ```
@@ -187,7 +260,22 @@ Set-Location 'D:\SWE proj'
 
 依 [人工驗收清單](specs/001-guided-notes-buzzer/checklists/requirements.md) 使用兩份不同位置的 Google Sheets 副本實測。記錄驗證人、日期、活動識別碼、預期／實際結果與去敏截圖。確認真實權限、API 授權、題號與小題標示保留、答案只寫正確格位。自動驗證不等於已由真人驗收。
 
-## 12. 常見問題
+## 12. 助教與展示常見問題
+
+| 現象 | 處理方式 |
+| --- | --- |
+| py -3.13 找不到 Python，或 python 指向 3.14 | 第 6 節首次建立環境時輸入實際 Python 3.13 完整路徑 |
+| 找不到 gcloud.cmd | 重開 PowerShell，或在第 6 節輸入安裝目錄下 bin/gcloud.cmd 的完整路徑 |
+| gcloud.ps1 被執行原則阻擋 | 統一使用 gcloud.cmd |
+| 申請權杖 403 | 確認瀏覽器登入帳號已獲該服務帳戶 Token Creator，且相關 API 已啟用 |
+| 申請權杖 400 | 確認服務帳戶地址與 lifetime=3600s，未核准延長時不要要求 43200s |
+| 服務帳戶沒有原試算表編輯權 | 新副本明確共用給目前輸入的服務帳戶，授予編輯者，重新貼副本網址 |
+| 權杖過期 | Ctrl+C，重跑第 6 節整段，再重新操作匯入／回填 |
+| 頁面空白或無法連線 | 確認終端出現 Running on，並使用終端列出的同一個連接埠 |
+| 5000 已被使用 | 停止上一個 Flask 程序再啟動 |
+| 曾回填後手動清空，同一活動無法再回填 | 原值與上次回填紀錄不同，保護檢查會停止。使用空白副本建立新活動測試 |
+
+
 
 - Google 驗證失敗：短效權杖可能到期，從安全方式更新環境後重啟，不需重建活動。
 - 權限拒絕：確認已啟用 Sheets／Drive、檔案為原生試算表，並分享給目前服務身分且授予編輯權。
